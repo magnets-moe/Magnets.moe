@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}FAQ | Magnets.moe{% endblock title %}
+{% block head %}
+{% call super() %}
+<style>
+    body {
+        max-width: 40em;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<h1><a href="/">Magnets.moe</a> / FAQ</h1>
+<ul>
+    <li>
+        <p><b>What <i>is</i> Magnets.moe?</b></p>
+        <p>
+            Magnets.moe provides the following features previously provided
+            by HorribleSubs.info:
+        </p>
+        <ul>
+            <li>A list this season's shows.</li>
+            <li>A schedule.</li>
+            <li>A list of torrents grouped by show.</li>
+        </ul>
+    </li>
+    <li>
+        <p><b>Why are there no torrents from before October 2020?</b></p>
+        <p>
+            Nyaa.si only allows you to retrieve the last 7500 torrents (100 pages,
+            75 torrents per page). This project was started in October 2020.
+        </p>
+        <p>For each torrent we need the following information:</p>
+        <ul>
+            <li>Nyaa.si id</li>
+            <li>Title</li>
+            <li>Upload date</li>
+            <li>Size</li>
+            <li>Hash</li>
+        </ul>
+        <p>
+            If you can get me this data for all Nyaa.si torrents in the category
+            Anime - English-translated, I will add them to the database.
+        </p>
+    </li>
+    <li>
+        <p><b>Why isn't this new torrent appearing?</b></p>
+        <p>
+            Magnets.moe scrapes the Anime - English-translated category on Nyaa.si
+            once every 5 minutes. If it takes more than 10 minutes for a torrent to
+            appear under <a href="/new">/new</a>, the scraping process is broken.
+        </p>
+        <p>
+            If a torrent appears under /new but not under its show, then it probably could
+            not be matched correctly. In this case, one of two things has happened:
+        </p>
+        <ul>
+            <li>
+                The torrent was not matched with any show. In this case it appears
+                under <a href="/unmatched">/unmatched</a>.
+            </li>
+            <li>The torrent was matched with another show.</li>
+        </ul>
+        <p>
+            The algorithm that matches torrents with shows can, in general, only find
+            a match for 90% of torrents. Without manual intervention, 10% of torrents
+            will stay unmatched.
+        </p>
+        <p>
+            Similarly, a certain percentage of torrents will get matched with an incorrect
+            show. Usually this happens with later seasons.
+        </p>
+        <p>
+            Most of the time, both of these problems can be fixed by adding new
+            classifiers to the database. For example, marking
+            <i>Haikyuu!! TO THE TOP 2</i> as the second season of
+            <i>Haikyuu!! TO THE TOP</i> will cause <i>[Erai-raws] Haikyuu!! To the Top 2nd Season - 08 [720p][Multiple Subtitle].mkv</i>
+            to correctly match with it.
+        </p>
+        <p>
+            However, some torrents do not contain the "correct" titles of their shows.
+            For example, <i>[Commie] Haikyuu!! To The Top - 21 [C4C506A2].mkv</i> is an
+            episode of the second season but will always match with the first season.
+        </p>
+        <p>
+            When in doubt, check /new and past seasons of the show.
+        </p>
+        <p>
+            Please report all such problems on
+            <a href="https://github.com/mahkoh/magnets.moe">GitHub</a>.
+        </p>
+    </li>
+    <li>
+        <p><b>Is this website associated with Nyaa.si or AniList.co?</b></p>
+        <p>No</p>
+    </li>
+    <li>
+        <p><b>What does ★ mean?</b></p>
+        <p>It means the torrent has the "trusted" attribute on Nyaa.si.</p>
+    </li>
+</ul>
+{% endblock %}

@@ -1,0 +1,17 @@
+a {
+    text-decoration: none;
+}
+#link-bar a {
+    margin-right: 1em;
+}
+body {
+    font-family: sans-serif;
+}
+input {
+    border: 1px solid #aaa;
+    border-radius: 1ch;
+    padding: .5ch 1ch;
+}
+input:focus {
+    outline: none;
+}

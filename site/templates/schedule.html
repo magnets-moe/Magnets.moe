@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Schedule | Magnets.moe{% endblock %}
+{% block content %}
+<h1><a href="/">Magnets.moe</a> / Schedule</h1>
+<p>All times are in UTC.</p>
+<input id="ip" placeholder="Filter">
+<div id="link-bar">
+    <h2>Shortcuts</h2>
+    {% for day in days %}
+    {% if day.elements.len() > 0 %}
+    <a id="lb-{{day.name}}" href="#{{day.name}}">{{day.name}}</a>
+    {% endif %}
+    {% endfor %}
+</div>
+<div>
+    {% for day in days %}
+    {% if day.elements.len() > 0 %}
+    <div id="group-{{day.name}}">
+        <h2 id="{{day.name}}">{{day.name}}</h2>
+        {% for showing in day.elements %}
+        {% match showing.showing_data %}
+            {% when Some with (showing_data) %}
+                <div id="element-{{showing_data.schedule_id}}">
+                    {{showing.air_time}}:
+                    <a href="/show/{{showing_data.show_id}}">{{showing_data.name}}</a>
+                </div>
+            {%else %}
+                <div>{{showing.air_time}}: <b>You are here</b></div>
+        {% endmatch %}
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+<script id="groups-json" type="application/json">{{ json|safe }}</script>
+<script src="/static/show_list.js"></script>
+{% endblock content %}

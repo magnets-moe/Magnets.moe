@@ -1,0 +1,12 @@
+{% extends "shows_base.html" %}
+{% block title %}{{ season_name }} | Magnets.moe{% endblock title %}
+{% block top %}
+<h1><a href="/">Magnets.moe</a> / {{ season_name }}</h1>
+<p>
+    <a href="/season/{{ prev_season_link }}">{{ prev_season_name }}</a>
+    -
+    {{ season_name }}
+    -
+    <a href="/season/{{ next_season_link }}">{{ next_season_name }}</a>
+</p>
+{% endblock top %}

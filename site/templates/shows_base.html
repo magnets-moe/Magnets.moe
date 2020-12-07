@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+{% block top %}{% endblock top %}
+<input id="ip" placeholder="Filter">
+<div id="link-bar">
+    <h2>Shortcuts</h2>
+    {% for letter in letters %}
+        <a id="lb-{{letter.name}}" href="#{{letter.name}}">{{letter.name}}</a>
+    {% endfor %}
+</div>
+<div>
+    {% for letter in letters %}
+    <div id="group-{{letter.name}}">
+        <h2 id="{{letter.name}}">{{letter.name}}</h2>
+        {% for show in letter.shows %}
+        <div id="element-{{show.show_id}}"><a href="/show/{{show.show_id}}">{{show.display_name}}</a></div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+<script id="groups-json" type="application/json">{{ json|safe }}</script>
+<script src="/static/show_list.js"></script>
+{% endblock content %}

@@ -1,0 +1,25 @@
+{% macro nav() %}
+{% if !first || last.is_some() %}
+<p>
+    <a href="{{base}}">Newest</a>
+    {% if last.is_some() %} - <a href="{{base}}?a={{last.unwrap()}}">Older</a>{% endif %}
+</p>
+{% endif %}
+{% endmacro %}
+
+{% macro list(base) %}
+<p>All times are in UTC.</p>
+{% call nav(base) %}
+{% for day in days %}
+    <h3>{{ day.date | format_day }}</h3>
+    {% for torrent in day.torrents %}
+        <div>
+            {{- torrent.date | format_time }} |
+            <a href="{{torrent.magnet_link}}" title="Magnet link">🧲&#xFE0E;</a> |
+            {%- if torrent.trusted %} <span title="Trusted">★</span> | {% endif %}
+            <a href="/torrent/{{torrent.torrent_id}}">{{torrent.title}}</a>
+        </div>
+    {% endfor %}
+{% endfor %}
+{% call nav(base) %}
+{% endmacro %}

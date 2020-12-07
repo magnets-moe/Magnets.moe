@@ -1,0 +1,7 @@
+{% import "torrent_list.html" as torrent_list %}
+{% extends "base.html" %}
+{% block title %}New | Magnets.moe{% endblock title %}
+{% block content %}
+<h1><a href="/">Magnets.moe</a> / New</h1>
+{% call torrent_list::list("/new") %}
+{% endblock %}

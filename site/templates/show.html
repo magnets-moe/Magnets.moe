@@ -1,0 +1,21 @@
+{% import "torrent_list.html" as torrent_list %}
+{% extends "base.html" %}
+{% block title %}{{romaji}} | Magnets.moe{% endblock title %}
+{% block content %}
+<h1><a href="/">Magnets.moe</a> / S{{show_id}}</h1>
+<p>Japanese: <b>{{romaji}}</b></p>
+{% match english %}
+    {% when Some with (english) %}
+        <p>English: {{english}}</p>
+    {% else %}
+{% endmatch %}
+<p>Format: {{format}}</p>
+{% match season %}
+    {% when Some with (season) %}
+        <p>Season: <a href="/season/{{season.1}}">{{season.0}}</a></p>
+    {% else %}
+{% endmatch %}
+<p>AniList: <a href="https://anilist.co/anime/{{anilist_id}}">{{anilist_id}}</a></p>
+<h2>Torrents</h2>
+{% call torrent_list::list(format!("/show/{}", self.show_id)) %}
+{% endblock %}

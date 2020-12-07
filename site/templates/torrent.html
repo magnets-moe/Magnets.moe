@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{title}} | Magnets.moe{% endblock title %}
+{% block content %}
+<h1><a href="/">Magnets.moe</a> / T{{torrent_id}}</h1>
+<p>Title: <b>{{title}}</b></p>
+{% if trusted %}
+<p><b>Trusted</b></p>
+{% endif %}
+<p>Size: {{ size|format_size }}</p>
+<p>Upload date: {{date|format_full_time}} (UTC)</p>
+<p>Nyaa: <a href="https://nyaa.si/view/{{nyaa_id}}">{{nyaa_id}}</a></p>
+<p>Magnet link: <a href="{{magnet_link}}">{{hash}}</a></p>
+{% for show in shows %}
+<p>Show: <a href="/show/{{show.show_id}}">{{show.name}}</a></p>
+{% endfor %}
+{% endblock %}

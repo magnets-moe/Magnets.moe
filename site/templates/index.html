@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Magnets.moe{% endblock %}
+{% block head %}
+    {% call super() %}
+    <style>
+        body {
+            max-width: 30em;
+        }
+    </style>
+{% endblock %}
+{% block content %}
+<h1>Magnets.moe</h1>
+<p>
+    Magnets.moe aggregates data from Nyaa.si and AniList.co to provide a directory of
+    anime torrents.
+</p>
+<p>
+    Report issues on <a href="https://github.com/mahkoh/magnets.moe">GitHub</a>.
+</p>
+<p>Pages:</p>
+<ul>
+    <li><a href="/new">New Torrents</a></li>
+    <li><a href="/schedule">Schedule</a></li>
+    <li><a href="/season/{{season_link}}">{{season_name}} Season</a></li>
+    <li><a href="/shows">All Shows</a></li>
+    <li><a href="/faq">FAQ</a></li>
+</ul>
+{% endblock %}
