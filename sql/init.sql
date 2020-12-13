@@ -6,10 +6,18 @@ create schema magnets;
 
 create table magnets.show_format (
     show_format int primary key,
-    description text not null
+    description text not null,
+    created timestamptz not null default now()
 );
 
-insert into magnets.show_format values (1, 'tv'), (2, 'tv short'), (3, 'movie'), (4, 'special'), (5, 'ova'), (6, 'ona');
+insert into magnets.show_format
+values
+       (1, 'tv'),
+       (2, 'tv short'),
+       (3, 'movie'),
+       (4, 'special'),
+       (5, 'ova'),
+       (6, 'ona');
 
 -- drop table if exists magnets.show cascade;
 
@@ -17,7 +25,8 @@ create table magnets.show (
     show_id bigserial primary key,
     anilist_id bigint not null unique,
     season int,
-    show_format int not null references magnets.show_format(show_format)
+    show_format int not null references magnets.show_format(show_format),
+    created timestamptz not null default now()
 );
 
 create index on magnets.show(anilist_id);
@@ -28,7 +37,8 @@ create index on magnets.show(season);
 
 create table magnets.show_name_type (
     show_name_type int primary key,
-    description text not null
+    description text not null,
+    created timestamptz not null default now()
 );
 
 insert into magnets.show_name_type values (1, 'romaji'), (2, 'english'), (3, 'additional');
@@ -53,7 +63,8 @@ create table magnets.schedule (
     schedule_id bigserial primary key,
     show_id bigint not null references magnets.show,
     episode int not null,
-    airs_at timestamptz not null
+    airs_at timestamptz not null,
+    created timestamptz not null default now()
 );
 
 -- drop table if exists magnets.hash_type;
@@ -101,7 +112,8 @@ create index on magnets.rel_torrent_show (show_id, nyaa_id desc);
 
 create table magnets.state (
     key text primary key,
-    value jsonb not null
+    value jsonb not null,
+    created timestamptz not null default now()
 );
 
 insert into magnets.state values

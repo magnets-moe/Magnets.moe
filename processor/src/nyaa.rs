@@ -2,7 +2,7 @@ use crate::{
     db_state, db_state::MAX_NYAA_SI_ID, sleeper::Sleeper, state::State, title_analyzer,
 };
 use anyhow::{anyhow, Context, Result};
-use common::{pg, time::MINUTE};
+use common::pg;
 use rust_decimal::{prelude::ToPrimitive, Decimal};
 use scraper::{ElementRef, Html, Selector};
 use selectors::Element;
@@ -40,7 +40,11 @@ fn get_unique_element<'a>(
 
 pub async fn load_torrents(state: &State<'_>) {
     loop {
-        let _ = timeout(MINUTE, state.db_watcher.max_nyaa_si_id.notified()).await;
+        let _ = timeout(
+            state.config.nyaa.scrape_interval,
+            state.db_watcher.max_nyaa_si_id.notified(),
+        )
+        .await;
         log::info!("scraping nyaa.si");
         if let Err(e) = load_torrents_(state).await {
             log::error!("could not load torrents: {:#}", e);
@@ -74,7 +78,7 @@ async fn load_torrents_(state: &State<'_>) -> Result<()> {
     // fetch show_db before opening the transaction so that all shows in the db are
     // visible to the transaction
     let show_db = state.show_db.get().await?;
-    let mut con = pg::connect().await?;
+    let mut con = state.pg_connector.connect().await?;
     let tran = pg::transaction(&mut con).await?;
     torrents.sort_by_key(|t| t.nyaa_id);
     for torrent in &mut torrents {

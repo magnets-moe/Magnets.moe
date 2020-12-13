@@ -6,23 +6,29 @@ use crate::{
 };
 use anyhow::Result;
 use chrono::{Duration, TimeZone, Utc};
-use common::{
-    pg,
-    pg::PgClient,
-    time::{HOUR, MINUTE},
-    Format, Season, ShowNameType, YearSeason,
-};
+use common::{pg, pg::PgClient, time::MINUTE, Format, Season, ShowNameType, YearSeason};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, ops::Not};
 use unicode_normalization::UnicodeNormalization;
 
-/// Loads the schedule once per hour
-pub async fn load_schedule(state: &State<'_>) {
+async fn wait_for_grace_period(state: &State<'_>) {
     // If the process repeatedly crashes, we don't want to put pressure on the anilist
     // servers even if a reload is due. Don't poll anilist during the first minute of
     // the process lifetime.
-    tokio::time::delay_until(state.startup_time + MINUTE).await;
-    let scheduled = Scheduled::new(state, LAST_SCHEDULE_UPDATE, HOUR);
+    tokio::time::delay_until(
+        state.startup_time + state.config.anilist.startup_grace_period,
+    )
+    .await;
+}
+
+/// Loads the schedule once per hour
+pub async fn load_schedule(state: &State<'_>) {
+    wait_for_grace_period(state).await;
+    let scheduled = Scheduled::new(
+        state,
+        LAST_SCHEDULE_UPDATE,
+        state.config.anilist.schedule_poll_interval,
+    );
     loop {
         scheduled.wait(&state.db_watcher.last_schedule_update).await;
         log::info!("loading the schedule");
@@ -113,7 +119,7 @@ query ($start: Int, $stop: Int, $page: Int) {
     // Don't bother with calculating a diff. Just throw everything away and insert the
     // new data.
 
-    let mut pg = pg::connect().await?;
+    let mut pg = state.pg_connector.connect().await?;
     let tran = pg::transaction(&mut pg).await?;
     // language=sql
     tran.execute("truncate magnets.schedule", &[]).await?;
@@ -138,11 +144,12 @@ query ($start: Int, $stop: Int, $page: Int) {
 
 /// Refreshes our copy of the anilist shows database once a day
 pub async fn load_shows(state: &State<'_>) {
-    // If the process repeatedly crashes, we don't want to put pressure on the anilist
-    // servers even if a reload is due. Don't poll anilist during the first minute of
-    // the process lifetime.
-    tokio::time::delay_until(state.startup_time + MINUTE).await;
-    let scheduled = Scheduled::new(state, LAST_SHOWS_UPDATE, 24 * HOUR);
+    wait_for_grace_period(state).await;
+    let scheduled = Scheduled::new(
+        state,
+        LAST_SHOWS_UPDATE,
+        state.config.anilist.shows_poll_interval,
+    );
     loop {
         scheduled.wait(&state.db_watcher.last_shows_update).await;
         log::info!("loading the shows");
@@ -161,7 +168,7 @@ pub async fn load_shows(state: &State<'_>) {
 
 /// Refreshes our copy of the anilist shows database
 pub async fn load_shows_now(state: &State<'_>) -> Result<()> {
-    let mut con = pg::connect().await?;
+    let mut con = state.pg_connector.connect().await?;
     let shows = load_shows_from_db(&mut con).await?;
     log::info!("loaded {} existing shows", shows.len());
     for i in 1.. {

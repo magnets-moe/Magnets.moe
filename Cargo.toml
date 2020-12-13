@@ -1,5 +1,6 @@
 [workspace]
-members = ["processor", "site", "common"]
+members = ["processor", "site", "common", "tokio-postgres-rustls", "tests"]
+exclude = ["toml-rs"]
 
 #[profile.dev]
 #panic = "abort"

@@ -11,6 +11,7 @@ use actix_web::{
 };
 use anyhow::Result;
 use askama::Template;
+use common::pg::PgConnector;
 
 #[actix_web::get("/shows")]
 pub async fn get(state: Data<State>) -> impl Responder {
@@ -37,7 +38,11 @@ pub async fn get(state: Data<State>) -> impl Responder {
 }
 
 async fn shows_(state: Data<State>) -> Result<Cached<Bytes>> {
-    state.global.shows.get(load_shows).await
+    state
+        .global
+        .shows
+        .get(|| load_shows(&state.global.pg_connector))
+        .await
 }
 
 #[derive(Template)]
@@ -53,8 +58,8 @@ common::create_statement!(ShowsStmt, show_id, name, show_name_type; "
     from magnets.show_name
     where show_name_type in (1, 2)");
 
-async fn load_shows() -> Result<Bytes> {
-    let db = common::pg::connect().await?;
+async fn load_shows(connector: &PgConnector) -> Result<Bytes> {
+    let db = connector.connect().await?;
     let stmt = ShowsStmt::new(&db).await?;
     let rows = db.query(&stmt.stmt, &[]).await?;
     let show_list = show_list_from_rows!(stmt, &rows);

@@ -3,7 +3,7 @@ use crate::{
     strings::{ArcString, StringLists},
 };
 use anyhow::Result;
-use common::{pg, Format, YearSeason};
+use common::{pg, pg::PgConnector, Format, YearSeason};
 use smallvec::{smallvec, SmallVec};
 use std::{
     collections::HashMap,
@@ -249,9 +249,9 @@ pub fn search_name(s: &str) -> String {
     search_name
 }
 
-async fn load_db() -> Result<ShowDb> {
+async fn load_db(connector: &PgConnector) -> Result<ShowDb> {
     log::info!("reloading the database");
-    let mut con = pg::connect().await?;
+    let mut con = connector.connect().await?;
     let tran = pg::transaction(&mut con).await?;
     let (shows, names) = futures::join!(load_shows(&tran), load_names(&tran));
     let db = build_db(shows?, names?);
@@ -260,25 +260,27 @@ async fn load_db() -> Result<ShowDb> {
 
 pub struct ShowDbHolder {
     show_db: Mutex<Option<Arc<ShowDb>>>,
+    connector: PgConnector,
 }
 
 impl ShowDbHolder {
-    pub fn new() -> Self {
+    pub fn new(connector: &PgConnector) -> Self {
         Self {
             show_db: Mutex::new(None),
+            connector: connector.clone(),
         }
     }
 
     pub async fn get(&self) -> Result<Arc<ShowDb>> {
         let mut show_db = self.show_db.lock().await;
         if show_db.is_none() {
-            *show_db = Some(Arc::new(load_db().await?));
+            *show_db = Some(Arc::new(load_db(&self.connector).await?));
         }
         Ok(show_db.as_ref().unwrap().clone())
     }
 
     pub async fn refresh(&self) -> Result<()> {
-        let new = Arc::new(load_db().await?);
+        let new = Arc::new(load_db(&self.connector).await?);
         *self.show_db.lock().await = Some(new);
         Ok(())
     }

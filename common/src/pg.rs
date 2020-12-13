@@ -2,17 +2,17 @@ use crate::time::StdDuration;
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures::future::poll_fn;
+use rustls::ClientConfig;
 use std::{
-    env::VarError,
     ops::Deref,
     str::FromStr,
     sync::{Arc, Weak},
 };
 use tokio::{sync::Mutex, task::JoinHandle};
 use tokio_postgres::{
-    tls::NoTlsStream, AsyncMessage, Client, Connection, IsolationLevel, NoTls, Socket,
-    Transaction,
+    AsyncMessage, Client, Connection, IsolationLevel, Socket, Transaction,
 };
+use tokio_postgres_rustls::{MakeRustlsConnect, RustlsStream};
 
 pub struct Dummy;
 
@@ -43,9 +43,12 @@ pub struct PgHolder<T = Dummy, R = NoOpMessageHandler> {
     con: Mutex<(u64, Option<Arc<Pg<T>>>, Option<JoinHandle<()>>)>,
     message_handler: R,
     persistent: bool,
+    connector: PgConnector,
 }
 
 pub type PgClient = Client;
+
+pub type PgConnection = Connection<Socket, RustlsStream<Socket>>;
 
 /// A postgres connection with associated data
 ///
@@ -73,62 +76,62 @@ pub async fn transaction<'a>(con: &'a mut PgClient) -> Result<Transaction<'a>> {
         .await?)
 }
 
-pub const PG_APPLICATION_NAME: &str = "PG_APPLICATION_NAME";
-
-/// Set the application name of connections established by this process
-pub fn set_name(name: &str) {
-    std::env::set_var(PG_APPLICATION_NAME, name);
+lazy_static::lazy_static! {
+    static ref MAKE_RUSTLS_CONNECT: MakeRustlsConnect = {
+        let mut config = ClientConfig::new();
+        config.root_store = rustls_native_certs::load_native_certs()
+            .expect("could not load platform certs");
+        MakeRustlsConnect::new(config)
+    };
 }
 
-async fn connect_raw() -> Result<(PgClient, Connection<Socket, NoTlsStream>)> {
-    const PG_CONNECTION_STRING: &str = "PG_CONNECTION_STRING";
-    let connection_string = match std::env::var(PG_CONNECTION_STRING) {
-        Ok(s) => s,
-        Err(VarError::NotPresent) => {
-            panic!("{} environment variable is not set", PG_CONNECTION_STRING)
+#[derive(Clone, Debug)]
+pub struct PgConnector {
+    connection_string: Arc<str>,
+}
+
+impl PgConnector {
+    pub fn new(connection_string: String) -> Self {
+        Self {
+            connection_string: connection_string.into_boxed_str().into(),
         }
-        Err(VarError::NotUnicode(_)) => panic!("{} is not Unicode", PG_CONNECTION_STRING),
-    };
-    let (client, con) = {
-        let mut config = tokio_postgres::Config::from_str(&connection_string)?;
-        if let Ok(s) = std::env::var(PG_APPLICATION_NAME) {
-            config.application_name(&s);
-        }
-        config
-            .connect(NoTls)
+    }
+
+    /// Creates a new postgres client
+    pub async fn connect(&self) -> Result<PgClient> {
+        self.connect_with_handler(&NoOpMessageHandler)
             .await
-            .context("cannot connect to postgres")?
-    };
-    Ok((client, con))
-}
+            .map(|(a, _)| a)
+    }
 
-/// Creates a new postgres client
-pub async fn connect() -> Result<PgClient> {
-    connect_with_handler(&NoOpMessageHandler)
-        .await
-        .map(|(a, _)| a)
-}
-
-/// Creates a new postgres client with a message handler
-async fn connect_with_handler<M: MessageHandler>(
-    message_handler: &M,
-) -> Result<(PgClient, JoinHandle<()>)> {
-    let (client, con) = connect_raw().await?;
-    let handler2 = message_handler.clone();
-    let join_handle = tokio::spawn(async move {
-        if let Err(e) = drive_connection(con, handler2).await {
-            log::error!("postgres connection failed: {:#}", e);
-        }
-    });
-    message_handler.listen(&client).await?;
-    Ok((client, join_handle))
+    /// Creates a new postgres client with a message handler
+    async fn connect_with_handler<M: MessageHandler>(
+        &self,
+        message_handler: &M,
+    ) -> Result<(PgClient, JoinHandle<()>)> {
+        let (client, con) = {
+            tokio_postgres::Config::from_str(&self.connection_string)?
+                .connect(MAKE_RUSTLS_CONNECT.clone())
+                .await
+                .context("cannot connect to postgres")?
+        };
+        let handler2 = message_handler.clone();
+        let join_handle = tokio::spawn(async move {
+            if let Err(e) = drive_connection(con, handler2).await {
+                log::error!("postgres connection failed: {:#}", e);
+            }
+        });
+        message_handler.listen(&client).await?;
+        Ok((client, join_handle))
+    }
 }
 
 /// Creates a postgres client with associated data
 async fn client<T: FromClient, M: MessageHandler>(
     message_handler: &M,
+    connector: &PgConnector,
 ) -> Result<(Pg<T>, JoinHandle<()>)> {
-    let (client, join_handle) = connect_with_handler(message_handler).await?;
+    let (client, join_handle) = connector.connect_with_handler(message_handler).await?;
     let pg = Pg {
         t: T::from_client(&client).await?,
         client,
@@ -138,18 +141,23 @@ async fn client<T: FromClient, M: MessageHandler>(
 
 impl<T: FromClient> PgHolder<T> {
     /// Creates a new container
-    pub fn new() -> Arc<Self> {
-        Self::with_message_handler(NoOpMessageHandler, false)
+    pub fn new(connector: &PgConnector) -> Arc<Self> {
+        Self::with_message_handler(NoOpMessageHandler, false, connector)
     }
 }
 
 impl<T: FromClient, M: MessageHandler> PgHolder<T, M> {
     /// Creates a new container
-    pub fn with_message_handler(message_handler: M, persistent: bool) -> Arc<Self> {
+    pub fn with_message_handler(
+        message_handler: M,
+        persistent: bool,
+        connector: &PgConnector,
+    ) -> Arc<Self> {
         let holder = Arc::new(Self {
             con: Mutex::new((0, None, None)),
             message_handler,
             persistent,
+            connector: connector.clone(),
         });
         if persistent {
             tokio::spawn(keep_connected(Arc::downgrade(&holder)));
@@ -180,7 +188,8 @@ impl<T: FromClient, M: MessageHandler> PgHolder<T, M> {
                 "creating postgres connection for thread {}",
                 std::thread::current().name().unwrap_or("?")
             );
-            let (client, join_handle) = client(&self.message_handler).await?;
+            let (client, join_handle) =
+                client(&self.message_handler, &self.connector).await?;
             locked.0 = ver + 1;
             locked.1 = Some(Arc::new(client));
             if self.persistent {
@@ -217,7 +226,7 @@ async fn keep_connected<T: FromClient, R: MessageHandler>(holder: Weak<PgHolder<
 }
 
 async fn drive_connection<T: MessageHandler>(
-    mut con: Connection<Socket, NoTlsStream>,
+    mut con: PgConnection,
     handler: T,
 ) -> Result<()> {
     loop {

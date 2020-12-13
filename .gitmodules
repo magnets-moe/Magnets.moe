@@ -1,0 +1,6 @@
+[submodule "tokio-postgres-rustls"]
+	path = tokio-postgres-rustls
+	url = git@github.com:mahkoh/tokio-postgres-rustls.git
+[submodule "toml-rs"]
+	path = toml-rs
+	url = git@github.com:mahkoh/toml-rs.git

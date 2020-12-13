@@ -1,4 +1,6 @@
+use crate::config::Config;
 use anyhow::Result;
+use common::pg::PgConnector;
 use isnt::std_1::vec::IsntVecExt;
 use std::collections::HashMap;
 
@@ -22,10 +24,14 @@ enum Diff {
 }
 
 async fn async_diff() -> Result<()> {
-    let current = load_current().await?;
-    let show_names = load_show_names().await?;
-    let show_db = crate::show_db::ShowDbHolder::new().get().await?;
-    let pg = common::pg::connect().await?;
+    let config: Config = common::config::load()?;
+    let pg_connector = PgConnector::new(config.db.connection_string);
+    let current = load_current(&pg_connector).await?;
+    let show_names = load_show_names(&pg_connector).await?;
+    let show_db = crate::show_db::ShowDbHolder::new(&pg_connector)
+        .get()
+        .await?;
+    let pg = pg_connector.connect().await?;
     // language=sql
     let torrents = pg
         .query("select title, nyaa_id from magnets.torrent", &[])
@@ -82,8 +88,8 @@ async fn async_diff() -> Result<()> {
     Ok(())
 }
 
-async fn load_current() -> Result<HashMap<i64, Vec<i64>>> {
-    let pg = common::pg::connect().await?;
+async fn load_current(pg_connector: &PgConnector) -> Result<HashMap<i64, Vec<i64>>> {
+    let pg = pg_connector.connect().await?;
     // language=sql
     let rows = pg
         .query("select nyaa_id, show_id from magnets.rel_torrent_show", &[])
@@ -97,8 +103,10 @@ async fn load_current() -> Result<HashMap<i64, Vec<i64>>> {
     Ok(res)
 }
 
-async fn load_show_names() -> Result<HashMap<i64, Vec<String>>> {
-    let pg = common::pg::connect().await?;
+async fn load_show_names(
+    pg_connector: &PgConnector,
+) -> Result<HashMap<i64, Vec<String>>> {
+    let pg = pg_connector.connect().await?;
     // language=sql
     let rows = pg
         .query("select show_id, name from magnets.show_name", &[])

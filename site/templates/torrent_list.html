@@ -15,8 +15,8 @@
     {% for torrent in day.torrents %}
         <div>
             {{- torrent.date | format_time }} |
-            <a href="{{torrent.magnet_link}}" title="Magnet link">🧲&#xFE0E;</a> |
-            {%- if torrent.trusted %} <span title="Trusted">★</span> | {% endif %}
+            <a href="{{torrent.magnet_link}}" title="Magnet link" class="symbol">M</a> |
+            {%- if torrent.trusted %} <span title="Trusted" class="symbol">T</span> | {% endif %}
             <a href="/torrent/{{torrent.torrent_id}}">{{torrent.title}}</a>
         </div>
     {% endfor %}

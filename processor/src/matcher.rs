@@ -51,7 +51,7 @@ common::create_statement!(LoadAllUnmatchedTorrents, torrent_id, title;
 
 async fn match_unmatched_(state: &State<'_>, mode: RematchMode) -> Result<()> {
     let show_db = state.show_db.get().await?;
-    let mut con = pg::connect().await?;
+    let mut con = state.pg_connector.connect().await?;
     let tran = pg::transaction(&mut con).await?;
     if mode == RematchMode::All {
         // language=sql

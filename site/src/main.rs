@@ -5,6 +5,7 @@ mod torrent_list;
 #[macro_use]
 mod show_list;
 mod cache;
+mod config;
 mod db;
 mod faq;
 mod index;
@@ -20,6 +21,7 @@ mod unmatched;
 
 use crate::{
     cache::Cache,
+    config::{AddrType, Config},
     state::{Global, State},
 };
 use actix_files as fs;
@@ -27,22 +29,30 @@ use actix_web::{
     web::{PathConfig, QueryConfig},
     App, HttpServer,
 };
-use common::{pg::PgHolder, time::MINUTE};
-use std::{io, sync::Arc};
+use anyhow::Result;
+use common::{
+    pg::{PgConnector, PgHolder},
+    time::MINUTE,
+};
+use std::sync::Arc;
 
 #[actix_web::main]
-async fn main() -> io::Result<()> {
-    common::pg::set_name("site");
+async fn main() -> Result<()> {
     common::env::configure_logger();
+
+    let config: Config = common::config::load()?;
+
+    let pg_connector = PgConnector::new(config.pg_connection_string.clone());
 
     let global = Arc::new(Global {
         shows: Cache::new(10 * MINUTE),
+        pg_connector: pg_connector.clone(),
     });
 
-    HttpServer::new(move || {
+    let mut server = HttpServer::new(move || {
         let state = State {
             global: global.clone(),
-            pg: PgHolder::new(),
+            pg: PgHolder::new(&pg_connector),
         };
         App::new()
             .data(state)
@@ -64,9 +74,17 @@ async fn main() -> io::Result<()> {
             .service(torrent::get)
             .service(faq::get)
             .service(new::get)
-    })
-    .max_connections(1000)
-    .bind("[::]:8080")?
-    .run()
-    .await
+    });
+    for addr in &config.listen_addr {
+        log::info!("binding to {}", addr);
+        server = match addr {
+            AddrType::Ip(addr) => server.bind(addr)?,
+            #[cfg(unix)]
+            AddrType::Uds(addr) => server.bind_uds(addr)?,
+            #[cfg(not(unix))]
+            AddrType::Uds(_) => log::warn!("skipping uds address"),
+        };
+    }
+    server.run().await?;
+    Ok(())
 }

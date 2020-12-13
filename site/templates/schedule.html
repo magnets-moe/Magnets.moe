@@ -3,7 +3,7 @@
 {% block content %}
 <h1><a href="/">Magnets.moe</a> / Schedule</h1>
 <p>All times are in UTC.</p>
-<input id="ip" placeholder="Filter">
+<input id="showname" type="search" autocomplete="on" placeholder="Filter">
 <div id="link-bar">
     <h2>Shortcuts</h2>
     {% for day in days %}
@@ -33,5 +33,5 @@
     {% endfor %}
 </div>
 <script id="groups-json" type="application/json">{{ json|safe }}</script>
-<script src="/static/show_list.js"></script>
+<script src="/static/show_list.js" type="module"></script>
 {% endblock content %}

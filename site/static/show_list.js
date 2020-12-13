@@ -8,7 +8,8 @@ for (let group of json) {
     group.num_elements_visible = group.elements.length;
 }
 
-let input = document.getElementById("ip");
+let input_value = "";
+let input = document.getElementById("showname");
 
 let update_shows = () => {
     let new_input = "";
@@ -21,6 +22,10 @@ let update_shows = () => {
             new_input += String.fromCodePoint(char);
         }
     }
+    if (new_input === input_value) {
+        return;
+    }
+    input_value = new_input;
     let display_changes = [];
     for (let group of json) {
         let group_changed = false;
@@ -58,6 +63,6 @@ let update_shows = () => {
         }
     }
 };
-input.addEventListener("input", update_shows);
 
-window.onload = update_shows;
+input.addEventListener("input", update_shows);
+window.addEventListener("pageshow", update_shows);
