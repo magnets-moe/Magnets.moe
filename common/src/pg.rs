@@ -40,10 +40,16 @@ impl FromClient for Dummy {
 /// If the connection fails, it will get replaced by a new connection the next time
 /// someone tries to borrow it. This operation is transparent.
 pub struct PgHolder<T = Dummy, R = NoOpMessageHandler> {
-    con: Mutex<(u64, Option<Arc<Pg<T>>>, Option<JoinHandle<()>>)>,
+    con: Mutex<PgHolderCon<T>>,
     message_handler: R,
     persistent: bool,
     connector: PgConnector,
+}
+
+struct PgHolderCon<T> {
+    version: u64,
+    pg: Option<Arc<Pg<T>>>,
+    join_handle: Option<JoinHandle<()>>,
 }
 
 pub type PgClient = Client;
@@ -154,7 +160,11 @@ impl<T: FromClient, M: MessageHandler> PgHolder<T, M> {
         connector: &PgConnector,
     ) -> Arc<Self> {
         let holder = Arc::new(Self {
-            con: Mutex::new((0, None, None)),
+            con: Mutex::new(PgHolderCon {
+                version: 0,
+                pg: None,
+                join_handle: None
+            }),
             message_handler,
             persistent,
             connector: connector.clone(),
@@ -170,7 +180,7 @@ impl<T: FromClient, M: MessageHandler> PgHolder<T, M> {
         loop {
             let (ver, con) = {
                 let locked = self.con.lock().await;
-                (locked.0, locked.1.clone())
+                (locked.version, locked.pg.clone())
             };
             if let Some(con) = con {
                 if con.simple_query("").await.is_ok() {
@@ -183,17 +193,17 @@ impl<T: FromClient, M: MessageHandler> PgHolder<T, M> {
 
     async fn connect(&self, ver: u64) -> Result<()> {
         let mut locked = self.con.lock().await;
-        if ver == locked.0 {
+        if ver == locked.version {
             log::info!(
                 "creating postgres connection for thread {}",
                 std::thread::current().name().unwrap_or("?")
             );
             let (client, join_handle) =
                 client(&self.message_handler, &self.connector).await?;
-            locked.0 = ver + 1;
-            locked.1 = Some(Arc::new(client));
+            locked.version = ver + 1;
+            locked.pg = Some(Arc::new(client));
             if self.persistent {
-                locked.2 = Some(join_handle);
+                locked.join_handle = Some(join_handle);
             }
         }
         Ok(())
@@ -205,7 +215,7 @@ async fn keep_connected<T: FromClient, R: MessageHandler>(holder: Weak<PgHolder<
         let join_handle = {
             let (ver, join_handle) = {
                 let mut locked = holder.con.lock().await;
-                (locked.0, locked.2.take())
+                (locked.version, locked.join_handle.take())
             };
             match join_handle {
                 Some(h) => h,

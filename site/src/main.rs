@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
 
     let config: Config = common::config::load()?;
 
-    let pg_connector = PgConnector::new(config.pg_connection_string.clone());
+    let pg_connector = PgConnector::new(config.db.connection_string.clone());
 
     let global = Arc::new(Global {
         shows: Cache::new(10 * MINUTE),
@@ -75,7 +75,7 @@ async fn main() -> Result<()> {
             .service(faq::get)
             .service(new::get)
     });
-    for addr in &config.listen_addr {
+    for addr in &config.http.listen_addr {
         log::info!("binding to {}", addr);
         server = match addr {
             AddrType::Ip(addr) => server.bind(addr)?,

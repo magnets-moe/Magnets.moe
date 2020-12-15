@@ -1,0 +1,19 @@
+[db]
+# See https://www.postgresql.org/docs/13/libpq-connect.html#LIBPQ-CONNSTRING
+connection_string = "host=/run/postgresql user=processor dbname=magnets"
+
+[http]
+# The user agent to perform http requests with
+# user_agent = "fill me"
+
+[anilist]
+# Time after program start during which no anilist requests are performed
+startup_grace_period = "1 minute"
+# Time between refreshing the shows database
+shows_poll_interval = "1 day"
+# Time between refreshing the schedule
+schedule_poll_interval = "1 hour"
+
+[nyaa]
+# Time between scraping nyaa.si
+scrape_interval = "1 minute"

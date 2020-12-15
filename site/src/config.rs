@@ -6,13 +6,24 @@ use std::{
     path::PathBuf,
 };
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Config {
-    pub pg_connection_string: String,
+    pub db: Db,
+    pub http: Http,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Db {
+    pub connection_string: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Http {
     #[serde(deserialize_with = "parse_addr_type")]
     pub listen_addr: Vec<AddrType>,
 }
 
+#[derive(Debug)]
 pub enum AddrType {
     Ip(SocketAddr),
     Uds(PathBuf),
@@ -35,8 +46,8 @@ where
     let mut res = vec![];
     for addr in addrs {
         const UNIX: &str = "unix:";
-        if addr.starts_with(UNIX) {
-            res.push(AddrType::Uds(addr[UNIX.len()..].to_string().into()));
+        if let Some(stripped) = addr.strip_prefix(UNIX) {
+            res.push(AddrType::Uds(stripped.to_string().into()));
         } else {
             match addr.to_socket_addrs() {
                 Ok(addrs) => res.extend(addrs.map(AddrType::Ip)),

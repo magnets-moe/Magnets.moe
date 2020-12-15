@@ -13,9 +13,9 @@ log = "0.4.11"
 async-trait = "0.1.42"
 env_logger = "0.8.2"
 futures = { version = "0.3.8", features = ["async-await"] }
-tokio-postgres-rustls = { path = "../tokio-postgres-rustls" }
 rustls = "0.18.0"
 rustls-native-certs = "0.4"
 lazy_static = "1.4.0"
 serde = "1.0.118"
-toml = { path = "../toml-rs" }
+tokio-postgres-rustls = { git = "https://github.com/mahkoh/tokio-postgres-rustls", branch = "uds" }
+toml = { git = "https://github.com/mahkoh/toml-rs.git", branch = "alt-error" }

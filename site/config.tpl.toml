@@ -1,0 +1,11 @@
+[db]
+# See https://www.postgresql.org/docs/13/libpq-connect.html#LIBPQ-CONNSTRING
+connection_string = "host=/run/postgresql user=site dbname=magnets"
+
+[http]
+# The addresses to listen on. They can be either uds addresses (if prefixed with `unix:`)
+# or tcp addresses.
+listen_addr = [
+    "[::]:8080",
+    "unix:./socket",
+]
