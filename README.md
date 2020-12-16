@@ -1,2 +1,2 @@
-# magnets.moe
+# Magnets.moe
 
