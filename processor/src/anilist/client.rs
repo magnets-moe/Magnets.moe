@@ -5,13 +5,6 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-/// Constructor for our global http client
-///
-/// We set our user agent so that upstream can contact us if necessary.
-pub fn reqwest_client(user_agent: &str) -> Client {
-    Client::builder().user_agent(user_agent).build().unwrap()
-}
-
 /// A client for the anilist graphql API
 ///
 /// This client has several nice properties:

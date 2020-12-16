@@ -13,8 +13,11 @@ use std::{
     str::FromStr,
     time::SystemTime,
 };
-use tokio_postgres::{types::{private::BytesMut, FromSql, IsNull, ToSql, Type}, Row};
-use tokio_postgres::binary_copy::BinaryCopyOutRow;
+use tokio_postgres::{
+    binary_copy::BinaryCopyOutRow,
+    types::{private::BytesMut, FromSql, IsNull, ToSql, Type},
+    Row,
+};
 
 pub trait GenericRow {
     fn get<'a, T: FromSql<'a>>(&'a self, idx: usize) -> T;
@@ -85,7 +88,7 @@ where
     W: Write,
     T: FromSql<'a>,
     F: Formatter<W, T>,
-    G: GenericRow
+    G: GenericRow,
 {
     match r.get::<Option<T>>(idx) {
         Some(v) => F::write(w, v)?,

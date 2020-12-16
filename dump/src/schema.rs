@@ -47,7 +47,9 @@ where
 }
 
 pub async fn get_schema(tran: &Transaction<'_>) -> Result<Schema> {
-    get_schema_(tran).await.context(anyhow!("cannot load schema"))
+    get_schema_(tran)
+        .await
+        .context(anyhow!("cannot load schema"))
 }
 
 async fn get_schema_(tran: &Transaction<'_>) -> Result<Schema> {

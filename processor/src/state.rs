@@ -1,5 +1,5 @@
 use crate::{
-    anilist_client::AnilistClient,
+    anilist::client::AnilistClient,
     config::Config,
     db_state::{DbWatcher, WatchMessageHandler},
     show_db::ShowDbHolder,

@@ -163,7 +163,7 @@ impl<T: FromClient, M: MessageHandler> PgHolder<T, M> {
             con: Mutex::new(PgHolderCon {
                 version: 0,
                 pg: None,
-                join_handle: None
+                join_handle: None,
             }),
             message_handler,
             persistent,

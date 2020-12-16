@@ -1,17 +1,17 @@
-use crate::{pg, schema::get_schema};
-use anyhow::{anyhow, Result, Context};
-use std::{
-    fs,
-    fs::OpenOptions,
-    io::{BufWriter},
-    path::Path,
+use crate::{
+    pg,
+    schema::{get_schema, Schema, Table},
 };
-use tokio_postgres::Transaction;
-use std::fs::File;
-use tokio_postgres::binary_copy::BinaryCopyOutStream;
-use crate::schema::{Schema, Table};
+use anyhow::{anyhow, Context, Result};
 use futures::{pin_mut, StreamExt};
 use postgres_types::{Oid, Type};
+use std::{
+    fs,
+    fs::{File, OpenOptions},
+    io::BufWriter,
+    path::Path,
+};
+use tokio_postgres::{binary_copy::BinaryCopyOutStream, Transaction};
 
 pub async fn dump(location: &str, tran: &Transaction<'_>) -> Result<()> {
     let path = Path::new(location);
@@ -20,14 +20,22 @@ pub async fn dump(location: &str, tran: &Transaction<'_>) -> Result<()> {
     }
     fs::create_dir_all(path)?;
     let schema = get_schema(tran).await?;
-    dump_tables(path, &schema, &tran).await.context(anyhow!("cannot dump tables"))?;
-    dump_sequences(path, &tran).await.context(anyhow!("cannot dump sequences"))?;
-    dump_schema(path, &schema).await.context(anyhow!("cannot dump schema.json"))?;
+    dump_tables(path, &schema, &tran)
+        .await
+        .context(anyhow!("cannot dump tables"))?;
+    dump_sequences(path, &tran)
+        .await
+        .context(anyhow!("cannot dump sequences"))?;
+    dump_schema(path, &schema)
+        .await
+        .context(anyhow!("cannot dump schema.json"))?;
     Ok(())
 }
 
 fn open_file(path: &Path) -> Result<BufWriter<File>> {
-    Ok(BufWriter::new(OpenOptions::new().create(true).write(true).open(&path)?))
+    Ok(BufWriter::new(
+        OpenOptions::new().create(true).write(true).open(&path)?,
+    ))
 }
 
 async fn dump_schema(path: &Path, schema: &Schema) -> Result<()> {
@@ -41,7 +49,9 @@ async fn dump_tables(path: &Path, schema: &Schema, tran: &Transaction<'_>) -> Re
     let root = path.join("tables");
     fs::create_dir(&root)?;
     for table in &schema.tables {
-        dump_table(&root, table, &tran).await.with_context(|| anyhow!("cannot dump table {}", table.name))?;
+        dump_table(&root, table, &tran)
+            .await
+            .with_context(|| anyhow!("cannot dump table {}", table.name))?;
     }
     Ok(())
 }
@@ -67,7 +77,9 @@ async fn dump_sequences(path: &Path, tran: &Transaction<'_>) -> Result<()> {
         let mut file = open_file(&file)?;
 
         let serializer = pg::serializer(&Type::from_oid(data_type).unwrap());
-        serializer.serialize(&mut file, &row, 2).with_context(|| anyhow!("cannot serialize sequence {}", sequencename))?;
+        serializer
+            .serialize(&mut file, &row, 2)
+            .with_context(|| anyhow!("cannot serialize sequence {}", sequencename))?;
     }
     Ok(())
 }
@@ -79,7 +91,11 @@ async fn dump_table(path: &Path, table: &Table, tran: &Transaction<'_>) -> Resul
     let reader = BinaryCopyOutStream::new(stream, &types);
     pin_mut!(reader);
 
-    let serializers: Vec<_> = table.columns.iter().map(|c| pg::serializer(&c.ty)).collect();
+    let serializers: Vec<_> = table
+        .columns
+        .iter()
+        .map(|c| pg::serializer(&c.ty))
+        .collect();
 
     let path = path.join(&table.name);
     fs::create_dir(&path)?;

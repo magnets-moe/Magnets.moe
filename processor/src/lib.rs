@@ -3,11 +3,11 @@
 #[cfg(target_os = "linux")]
 mod allocator;
 mod anilist;
-mod anilist_client;
 mod config;
 mod db_state;
 mod diff;
 mod heap;
+mod http;
 mod matcher;
 mod nyaa;
 mod scheduled;
@@ -19,8 +19,11 @@ mod title_analyzer;
 mod trie;
 
 use crate::{
-    anilist::{load_schedule, load_shows, load_shows_now},
-    anilist_client::AnilistClient,
+    anilist::{
+        client::AnilistClient,
+        schedule::load_schedule,
+        shows::{load_shows, load_shows_now},
+    },
     config::Config,
     db_state::{DbWatcher, INITIAL_SETUP, LAST_SHOWS_UPDATE},
     matcher::match_unmatched,
@@ -58,7 +61,7 @@ fn processor_in_thread() -> Result<()> {
 async fn process() -> Result<()> {
     let config: Config = common::config::load()?;
     let db_watcher = DbWatcher::new();
-    let web_client = anilist_client::reqwest_client(&config.http.user_agent);
+    let web_client = http::reqwest_client(&config.http.user_agent);
     let pg_connector = PgConnector::new(config.db.connection_string.clone());
     let state = State {
         pg: PgHolder::with_message_handler(
