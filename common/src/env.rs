@@ -7,11 +7,7 @@ use std::{io, io::Write};
 /// See https://www.freedesktop.org/software/systemd/man/systemd.exec.html#%24JOURNAL_STREAM
 #[cfg(target_os = "linux")]
 pub fn logging_to_journal() -> bool {
-    use std::{
-        fs::File,
-        mem,
-        os::{linux::fs::MetadataExt, unix::io::FromRawFd},
-    };
+    use std::os::linux::fs::MetadataExt;
 
     let ab = match std::env::var("JOURNAL_STREAM") {
         Ok(s) => s,
@@ -25,10 +21,7 @@ pub fn logging_to_journal() -> bool {
         (Ok(l), Ok(r)) => (l, r),
         _ => return false,
     };
-    let f = unsafe { File::from_raw_fd(2) };
-    let metadata = f.metadata();
-    mem::forget(f);
-    let metadata = match metadata {
+    let metadata = match std::fs::metadata("/proc/self/fd/2") {
         Ok(m) => m,
         Err(_) => return false,
     };
