@@ -38,7 +38,7 @@ struct Torrent<'a> {
     date: DateTime<Utc>,
     magnet_link: MagnetFormatter<'a>,
     hash: HexFormatter<'a>,
-    shows: Vec<Show<'a>>,
+    shows: Vec<Show>,
     size: i64,
 }
 
@@ -47,9 +47,9 @@ mod filters {
 }
 
 #[derive(Deserialize)]
-struct Show<'a> {
+struct Show {
     show_id: i64,
-    name: &'a str,
+    name: String,
 }
 
 async fn process(state: &State, torrent_id: i64) -> Result<String> {
